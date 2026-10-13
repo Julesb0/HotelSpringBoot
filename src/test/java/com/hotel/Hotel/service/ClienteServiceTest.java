@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,5 +57,22 @@ class ClienteServiceTest {
         assertTrue(clienteGuardado.isActivo());
         assertEquals(0, clienteGuardado.getPenalizaciones());
         assertSame(responseEsperado, resultado);
+    }
+
+    @Test
+    @DisplayName("Debe lanzar excepción si el cliente no existe")
+    void debeLanzarExcepcionSiClienteNoExiste() {
+        // Arrange
+        UUID idInexistente = UUID.randomUUID();
+        when(clienteRepository.findById(idInexistente)).thenReturn(Optional.empty());
+
+        // Act
+        IllegalArgumentException excepcion = assertThrows(IllegalArgumentException.class,
+                () -> clienteService.obtenerPorId(idInexistente));
+
+        // Assert
+        assertEquals("Cliente no encontrado con ID: " + idInexistente, excepcion.getMessage());
+        verify(clienteRepository, times(1)).findById(idInexistente);
+        verifyNoInteractions(clienteMapper);
     }
 }
