@@ -3,6 +3,7 @@ package com.hotel.Hotel.service;
 import com.hotel.Hotel.domain.*;
 import com.hotel.Hotel.dto.request.CrearReservaRequest;
 import com.hotel.Hotel.dto.response.ReservaResponse;
+import com.hotel.Hotel.exception.ReglaNegocioException;
 import com.hotel.Hotel.mapper.ReservaMapper;
 import com.hotel.Hotel.repository.ClienteRepository;
 import com.hotel.Hotel.repository.HabitacionRepository;
@@ -74,5 +75,32 @@ class ReservaServiceCrearTest {
         assertEquals(450.0, reservaGuardada.getCostoTotal(), 0.001); // 3 noches x 150
         assertSame(responseEsperado, resultado);
         verify(reservaMapper, times(1)).toResponse(reservaGuardada);
+    }
+
+    @Test
+    @DisplayName("Debe rechazar la reserva si el cliente está inactivo")
+    void debeRechazarReservaDeClienteInactivo() {
+        // Arrange
+        Cliente cliente = new Cliente("Pedro Ruiz", "pedro@correo.com");
+        cliente.registrarPenalizacion();
+        cliente.registrarPenalizacion();
+        cliente.registrarPenalizacion(); // con 3 penalizaciones queda inactivo
+        Habitacion suite = new SuitePresidencial("PH-01", 4, 800.0, true, true);
+        LocalDateTime entrada = LocalDateTime.now().plusDays(1);
+        LocalDateTime salida = entrada.plusDays(2);
+        CrearReservaRequest request = new CrearReservaRequest(
+                cliente.getId(), suite.getId(), entrada, salida);
+
+        when(clienteRepository.findById(cliente.getId())).thenReturn(Optional.of(cliente));
+        when(habitacionRepository.findById(suite.getId())).thenReturn(Optional.of(suite));
+
+        // Act
+        ReglaNegocioException excepcion = assertThrows(ReglaNegocioException.class,
+                () -> reservaService.crear(request));
+
+        // Assert
+        assertEquals("El cliente está inactivo o penalizado y no puede crear reservas.", excepcion.getMessage());
+        verify(reservaRepository, never()).save(any(Reserva.class));
+        verifyNoInteractions(reservaMapper);
     }
 }
