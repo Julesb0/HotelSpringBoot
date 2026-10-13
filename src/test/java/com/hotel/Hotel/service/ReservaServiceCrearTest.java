@@ -103,4 +103,22 @@ class ReservaServiceCrearTest {
         verify(reservaRepository, never()).save(any(Reserva.class));
         verifyNoInteractions(reservaMapper);
     }
+
+    @Test
+    @DisplayName("Debe rechazar la reserva si la fecha de salida es anterior a la de entrada")
+    void debeRechazarFechasInvalidas() {
+        // Arrange
+        LocalDateTime entrada = LocalDateTime.now().plusDays(2);
+        LocalDateTime salida = entrada.minusDays(1);
+        CrearReservaRequest request = new CrearReservaRequest(
+                UUID.randomUUID(), UUID.randomUUID(), entrada, salida);
+
+        // Act
+        ReglaNegocioException excepcion = assertThrows(ReglaNegocioException.class,
+                () -> reservaService.crear(request));
+
+        // Assert
+        assertEquals("La fecha de salida no puede ser anterior a la fecha de entrada.", excepcion.getMessage());
+        verifyNoInteractions(clienteRepository, habitacionRepository, reservaRepository, reservaMapper);
+    }
 }
